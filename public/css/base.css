@@ -201,6 +201,11 @@ body { margin: 0; min-height: 100vh; }
 }
 .notes-toggle-icon { transition: transform 0.15s ease; }
 .notes-header.open .notes-toggle-icon { transform: rotate(90deg); }
+.notes-titlebar-left, .notes-titlebar-right { display: flex; align-items: center; gap: 8px; }
+/* Fake window icon + minimize/maximize/close chrome -- decorative only,
+   purely for the Windows XP/Vista "Aero" theme; every other theme hides
+   these and keeps the plain header. */
+.notes-win-icon, .win-btn { display: none; }
 
 /* Notes: W3Schools-style callouts and example labels */
 .notes-body .example-label {

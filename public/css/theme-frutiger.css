@@ -139,8 +139,7 @@ body::after {
 .auth-card,
 .category-block,
 .solve-left, .solve-right,
-.your-rank-card,
-.notes-block {
+.your-rank-card {
   position: relative;
   isolation: isolate;
   background: var(--glass);
@@ -152,8 +151,7 @@ body::after {
 .auth-card::before,
 .category-block::before,
 .solve-left::before, .solve-right::before,
-.your-rank-card::before,
-.notes-block::before {
+.your-rank-card::before {
   content: '';
   position: absolute;
   z-index: -1;
@@ -189,7 +187,7 @@ body::after {
 
 .problems-page h1, .leaderboard-page h1, .notes-page h1 { color: var(--text); }
 .subtitle { color: var(--text-dim); }
-.category-block, .notes-block { border-radius: 16px; }
+.category-block { border-radius: 16px; }
 .category-header, .notes-header {
   background: rgba(4, 25, 46, 0.3);
   border-bottom: 1px solid rgba(185, 227, 255, 0.3);
@@ -245,9 +243,50 @@ body::after {
 .leaderboard-table tr.you-row { background: linear-gradient(90deg, rgba(41,182,255,0.18), rgba(34,224,192,0.18)); }
 .you-tag { color: var(--accent-2); }
 
-.notes-block { border-radius: 16px; }
-.notes-header h3 { color: var(--text); }
-.notes-body { color: var(--text); }
-.notes-body code { background: rgba(255,255,255,0.8); border: 1px solid rgba(255,255,255,0.9); color: var(--ink); border-radius: 4px; }
+/* Each notes module rendered as its own little XP/Vista Aero window:
+   glossy blue glass titlebar (with a fake icon + minimize/maximize/close
+   chrome) sitting on top of an opaque light "paper" content pane -- real
+   Aero windows kept their glass effect to the frame/titlebar, with a
+   solid, readable content area underneath. */
+.notes-block {
+  position: relative;
+  isolation: isolate;
+  background: rgba(250, 253, 255, 0.96);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  box-shadow: 0 18px 40px var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.5);
+}
+.notes-header {
+  background: linear-gradient(180deg, #b9ecff 0%, #4fc3f7 12%, #0ea5e0 55%, #0072c6 100%);
+  border-bottom: 1px solid rgba(255,255,255,0.5);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.85), inset 0 -14px 18px rgba(0,45,85,0.35);
+  border-radius: 7px 7px 0 0;
+}
+.notes-header h3 {
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,20,40,0.55);
+  font-weight: 700;
+}
+.notes-win-icon {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #ffffff 0%, #bfe6f8 100%);
+  border: 1px solid rgba(255,255,255,0.9);
+  box-shadow: 0 1px 2px rgba(0,10,30,0.4);
+}
+.win-btn {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.7);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 1px 2px rgba(0,10,30,0.35);
+}
+.win-min, .win-max { background: linear-gradient(180deg, #f2fbff 0%, #9fd3ec 100%); }
+.win-close { background: linear-gradient(180deg, #ffb2b1 0%, #e2413f 100%); }
+.notes-toggle-icon { color: #fff; text-shadow: 0 1px 2px rgba(0,20,40,0.55); }
+.notes-body { color: var(--ink); }
+.notes-body code { background: rgba(6,38,61,0.06); border: 1px solid rgba(6,38,61,0.15); color: var(--ink); border-radius: 4px; }
 .notes-body pre { background: linear-gradient(180deg, #041824 0%, #082c40 100%); color: #bdeeff; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); }
-.notes-toggle-icon { color: var(--accent); }

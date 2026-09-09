@@ -175,8 +175,16 @@ async function viewNotes() {
   listEl.innerHTML = data.notes.map((n, i) => `
     <div class="notes-block">
       <div class="notes-header" data-index="${i}">
-        <h3>${escapeHtml(n.title)}</h3>
-        <span class="notes-toggle-icon">&#9656;</span>
+        <div class="notes-titlebar-left">
+          <span class="notes-win-icon" aria-hidden="true"></span>
+          <h3>${escapeHtml(n.title)}</h3>
+        </div>
+        <div class="notes-titlebar-right">
+          <span class="win-btn win-min" aria-hidden="true"></span>
+          <span class="win-btn win-max" aria-hidden="true"></span>
+          <span class="win-btn win-close" aria-hidden="true"></span>
+          <span class="notes-toggle-icon">&#9656;</span>
+        </div>
       </div>
       <div class="notes-body" id="notes-body-${i}" hidden>${n.contentHtml}</div>
     </div>
