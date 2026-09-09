@@ -11,7 +11,7 @@
 
   <ItemGroup>
     <!-- Floating to the latest 4.x patch so restore doesn't fail on a
-         guessed exact version -- run `dotnet restore` on first build. -->
+         guessed exact version; run `dotnet restore` on first build. -->
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="4.*" />
   </ItemGroup>
 
