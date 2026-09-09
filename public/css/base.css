@@ -187,3 +187,36 @@ body { margin: 0; min-height: 100vh; }
 }
 .notes-toggle-icon { transition: transform 0.15s ease; }
 .notes-header.open .notes-toggle-icon { transform: rotate(90deg); }
+
+/* Notes: W3Schools-style callouts and example labels */
+.notes-body .example-label {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-2);
+  margin: 14px 0 4px;
+}
+.notes-body .note-callout,
+.notes-body .tip-callout {
+  margin: 10px 0;
+  padding: 10px 14px;
+  border-left: 4px solid var(--accent);
+  background: var(--panel-2, rgba(127, 127, 127, 0.08));
+  border-radius: 4px;
+}
+.notes-body .note-callout p,
+.notes-body .tip-callout p { margin: 0; }
+.notes-body .tip-callout { border-left-color: var(--accent-2); }
+.notes-body .note-callout b, .notes-body .tip-callout b { color: var(--accent); }
+.notes-body .tip-callout b { color: var(--accent-2); }
+.notes-body .takeaways {
+  margin: 14px 0;
+  padding: 12px 16px;
+  border: 1px solid var(--border, rgba(127, 127, 127, 0.25));
+  border-radius: 6px;
+  background: var(--panel-2, rgba(127, 127, 127, 0.05));
+}
+.notes-body .takeaways p { margin: 0 0 6px; font-weight: 700; }
+.notes-body .takeaways ul { margin: 0; }
