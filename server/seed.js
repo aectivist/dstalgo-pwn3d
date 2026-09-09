@@ -30,6 +30,14 @@ const upsertProblem = db.prepare(`
     order_index = excluded.order_index
 `);
 
+// Upserting alone leaves stale rows behind forever if a problem or category
+// is removed from problemsData.js -- delete anything no longer present here
+// so re-seeding actually reflects a full problem-set rewrite, not just
+// additions. Submissions cascade-delete with their problem (see db.js), so
+// removing a retired problem also clears now-meaningless history for it.
+const deleteProblemsNotIn = db.prepare(`DELETE FROM problems WHERE slug NOT IN (${problems.map(() => '?').join(',') || "''"})`);
+const deleteCategoriesNotIn = db.prepare(`DELETE FROM categories WHERE slug NOT IN (${categories.map(() => '?').join(',') || "''"})`);
+
 const seed = db.transaction(() => {
   for (const cat of categories) {
     upsertCategory.run(cat);
@@ -54,6 +62,9 @@ const seed = db.transaction(() => {
       order_index: orderCounters[p.category],
     });
   }
+
+  deleteProblemsNotIn.run(...problems.map(p => p.slug));
+  deleteCategoriesNotIn.run(...categories.map(c => c.slug));
 });
 
 seed();
