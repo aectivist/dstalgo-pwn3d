@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DSTALGO PWN3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto:wght@400;500;700&family=Orbitron:wght@500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/base.css" />
+<link rel="stylesheet" href="/css/theme-dark.css" id="theme-link" />
+<script>
+  (function () {
+    try {
+      var THEME_FILES = {
+        frutiger: '/css/theme-frutiger.css',
+        dark: '/css/theme-dark.css',
+        light: '/css/theme-light.css',
+        leetcode: '/css/theme-leetcode.css',
+      };
+      var saved = localStorage.getItem('dstalgo-theme') || 'dark';
+      var link = document.getElementById('theme-link');
+      link.setAttribute('href', THEME_FILES[saved] || THEME_FILES.dark);
+    } catch (e) { /* localStorage unavailable, keep default theme */ }
+  })();
+</script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand" data-nav="#/problems">DSTALGO PWN3D</div>
+    <div class="topbar-actions">
+      <nav class="topbar-right" id="topbar-user"></nav>
+      <div class="settings-wrap">
+        <button class="settings-btn" id="settings-btn" type="button" title="Theme settings" aria-label="Theme settings">&#9881;</button>
+        <div class="settings-panel" id="settings-panel" hidden>
+          <div class="settings-panel-title">Theme</div>
+          <div id="theme-options"></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="app"></main>
+
+  <template id="tpl-auth">
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button class="auth-tab" data-mode="login">Sign In</button>
+        <button class="auth-tab" data-mode="register">Register</button>
+      </div>
+      <form id="auth-form">
+        <label>Username
+          <input type="text" name="username" autocomplete="username" required />
+        </label>
+        <label>Password
+          <input type="password" name="password" autocomplete="current-password" required />
+        </label>
+        <div class="auth-error" id="auth-error"></div>
+        <button type="submit" class="btn btn-primary" id="auth-submit">Sign In</button>
+      </form>
+    </div>
+  </template>
+
+  <template id="tpl-problems">
+    <div class="problems-page">
+      <h1>Practice Problems</h1>
+      <p class="subtitle">Based on the DSTALGO course topics: arrays, sorting, matrices, ArrayLists, linked lists, stacks &amp; queues.</p>
+      <div id="category-list"></div>
+    </div>
+  </template>
+
+  <template id="tpl-leaderboard">
+    <div class="leaderboard-page">
+      <h1>Leaderboard</h1>
+      <p class="subtitle">Ranked by total XP earned from solved problems.</p>
+      <div class="your-rank-card" id="your-rank-card"></div>
+      <table class="leaderboard-table">
+        <thead>
+          <tr><th>Rank</th><th>User</th><th>Level</th><th>XP</th><th>Solved</th></tr>
+        </thead>
+        <tbody id="leaderboard-body"></tbody>
+      </table>
+    </div>
+  </template>
+
+  <template id="tpl-notes">
+    <div class="notes-page">
+      <h1>Notes</h1>
+      <p class="subtitle">Reference notes for each topic -- read up before you practice.</p>
+      <div id="notes-list"></div>
+    </div>
+  </template>
+
+  <template id="tpl-solve">
+    <div class="solve-page">
+      <div class="solve-left">
+        <div class="solve-header">
+          <a href="#/problems" class="back-link">&larr; All problems</a>
+          <h2 id="problem-title"></h2>
+          <span class="badge" id="problem-difficulty"></span>
+          <span class="category-pill" id="problem-category"></span>
+        </div>
+        <div class="problem-description" id="problem-description"></div>
+      </div>
+      <div class="solve-right">
+        <div class="editor-toolbar">
+          <button class="btn" id="btn-reset">Reset</button>
+          <button class="btn" id="btn-run">Run</button>
+          <button class="btn btn-primary" id="btn-submit">Submit</button>
+        </div>
+        <textarea id="code-editor" spellcheck="false"></textarea>
+        <div class="results" id="results"></div>
+      </div>
+    </div>
+  </template>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/theme.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html>

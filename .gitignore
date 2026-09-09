@@ -1,0 +1,20 @@
+# Node
+node_modules/
+npm-debug.log*
+*.log
+
+# App data (local SQLite DB, never committed)
+data/*.db
+data/*.db-*
+
+# .NET build output
+judge-host/bin/
+judge-host/obj/
+
+# Environment / secrets
+.env
+.env.*
+
+# OS junk
+.DS_Store
+Thumbs.db

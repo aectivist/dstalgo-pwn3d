@@ -1,0 +1,189 @@
+/* Structural/layout rules only -- no colors, gradients, shadows, blur, or
+   border-radius shape decisions. Those all live in the per-theme CSS files
+   (theme-*.css) so a theme swap only needs to change stylesheet, not markup. */
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; min-height: 100vh; }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.topbar-actions { display: flex; align-items: center; gap: 14px; }
+.brand {
+  font-family: 'Orbitron', var(--font);
+  font-weight: 600;
+  font-size: 1.15rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.topbar-right { display: flex; align-items: center; gap: 14px; font-size: 0.9rem; }
+.topbar-right .username { font-weight: 700; }
+.nav-link { text-decoration: none; font-size: 0.9rem; font-weight: 600; }
+
+.settings-wrap { position: relative; }
+.settings-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+.settings-panel {
+  position: absolute;
+  top: 44px;
+  right: 0;
+  min-width: 210px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 20;
+}
+.settings-panel[hidden] { display: none; }
+.settings-panel-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  padding: 4px 8px 6px;
+}
+.theme-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: none;
+  text-align: left;
+  width: 100%;
+}
+.theme-swatch { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }
+.theme-option .check { margin-left: auto; opacity: 0; font-weight: 700; }
+.theme-option.active .check { opacity: 1; }
+
+.level-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 4px 12px;
+}
+.level-bar { width: 60px; height: 7px; overflow: hidden; display: inline-block; }
+.level-bar-fill { display: block; height: 100%; }
+.xp-text { font-weight: 600; }
+
+#app { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+.btn {
+  position: relative;
+  overflow: hidden;
+  padding: 9px 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-width: 1px;
+  border-style: solid;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+.btn:active { transform: translateY(1px) scale(0.99); }
+.btn-link { background: none; border: none; box-shadow: none; cursor: pointer; text-decoration: underline; font-weight: 600; padding: 0; }
+
+.auth-card { max-width: 380px; margin: 60px auto; padding: 28px; }
+.auth-tabs { display: flex; margin-bottom: 20px; overflow: hidden; padding: 4px; gap: 4px; }
+.auth-tab { flex: 1; padding: 9px; border: none; cursor: pointer; font-weight: 600; }
+.auth-tab.active { font-weight: 700; }
+#auth-form { display: flex; flex-direction: column; gap: 14px; }
+#auth-form label { display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; font-weight: 600; }
+#auth-form input { padding: 10px 12px; font-size: 1rem; width: 100%; }
+.auth-error { font-size: 0.85rem; min-height: 1em; font-weight: 600; }
+
+.problems-page h1, .leaderboard-page h1, .notes-page h1 { margin-bottom: 4px; }
+.subtitle { margin-top: 0; margin-bottom: 24px; }
+.category-block { margin-bottom: 18px; overflow: hidden; }
+.category-header {
+  padding: 14px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+.category-header h3 { margin: 0; font-size: 1rem; }
+.category-header .meta { font-size: 0.85rem; font-weight: 600; }
+.problem-row { display: flex; align-items: center; gap: 12px; padding: 12px 18px; text-decoration: none; }
+.problem-row .check { width: 18px; text-align: center; font-weight: 700; }
+.problem-row .title { flex: 1; }
+.badge { position: relative; overflow: hidden; font-size: 0.75rem; padding: 3px 10px; font-weight: 700; }
+
+.solve-page { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+.solve-left, .solve-right { padding: 18px; }
+.solve-header { margin-bottom: 12px; }
+.back-link { font-size: 0.85rem; text-decoration: none; font-weight: 600; }
+.solve-header h2 { margin: 8px 0 8px; }
+.category-pill { margin-left: 8px; font-size: 0.8rem; font-weight: 600; padding: 2px 10px; }
+.problem-description { line-height: 1.6; }
+.problem-description code { padding: 1px 5px; font-size: 0.9em; }
+.editor-toolbar { display: flex; gap: 8px; margin-bottom: 10px; }
+#code-editor {
+  width: 100%;
+  min-height: 340px;
+  font-family: "Cascadia Code", Consolas, Menlo, monospace;
+  font-size: 0.9rem;
+  padding: 14px;
+  resize: vertical;
+  tab-size: 2;
+}
+.results { margin-top: 14px; }
+.result-summary { font-weight: 700; margin-bottom: 8px; }
+.test-case { padding: 8px 12px; margin-bottom: 6px; font-size: 0.85rem; font-family: Consolas, Menlo, monospace; }
+.test-case .label { font-weight: 700; margin-right: 6px; }
+
+@media (max-width: 900px) {
+  .solve-page { grid-template-columns: 1fr; }
+}
+
+.your-rank-card { padding: 14px 18px; margin-bottom: 20px; }
+.your-rank-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.your-rank-label { font-size: 0.85rem; font-weight: 600; }
+.your-rank-value { font-size: 1.5rem; font-weight: 800; }
+.leaderboard-table { width: 100%; border-collapse: collapse; overflow: hidden; }
+.leaderboard-table th { text-align: left; padding: 10px 16px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; }
+.leaderboard-table td { padding: 10px 16px; }
+.you-tag { font-size: 0.8rem; font-weight: 700; }
+
+/* Notes */
+.notes-block { margin-bottom: 18px; overflow: hidden; }
+.notes-header {
+  padding: 14px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+.notes-header h3 { margin: 0; font-size: 1rem; }
+.notes-body { padding: 4px 22px 20px; line-height: 1.7; }
+.notes-body[hidden] { display: none; }
+.notes-body h4 { margin: 14px 0 6px; }
+.notes-body ul { margin: 6px 0; padding-left: 22px; }
+.notes-body code { padding: 1px 5px; font-size: 0.9em; }
+.notes-body pre {
+  padding: 12px 14px;
+  overflow-x: auto;
+  font-family: "Cascadia Code", Consolas, Menlo, monospace;
+  font-size: 0.85rem;
+}
+.notes-toggle-icon { transition: transform 0.15s ease; }
+.notes-header.open .notes-toggle-icon { transform: rotate(90deg); }

@@ -1,0 +1,17 @@
+{
+  "name": "dstalgo-pwn3d",
+  "version": "1.0.0",
+  "description": "A LeetCode-style practice site for the DSTALGO course topics, judged in C#",
+  "main": "server/index.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "node server/index.js",
+    "seed": "node server/seed.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.6",
+    "express": "^4.19.2"
+  }
+}
