@@ -1,132 +1,84 @@
 // JudgeHost: a one-shot process spawned by the Node backend for every
-// Run/Submit click. Reads a single JSON request from stdin, compiles and
-// executes the submitted C# against a problem's test cases using Roslyn
-// scripting, and writes a single JSON result line to stdout.
+// Run/Submit click. Reads a single JSON request from stdin: the
+// submission's full C# source plus a list of stdin/stdout test cases.
 //
-// Safety model: this process does NOT try to sandbox the submitted code or
-// enforce its own timeout -- untrusted C# can spin forever in a way no
-// in-process cancellation token can safely interrupt. Instead, the *parent*
-// Node process enforces the timeout by killing this whole process if it
-// doesn't respond in time (see server/csharpJudge.js). That's the only
-// approach that's actually reliable against an infinite loop.
+// Unlike the old Roslyn-scripting version, this ACTUALLY compiles the
+// submission with `dotnet build` -- a real C# compiler, real compile
+// errors, no hidden driver concatenated invisibly onto the student's code.
+// The submission is a complete, standalone Program.cs with its own Main;
+// nothing else is added to it before compiling.
+//
+// Grading model: for each test case, the compiled program is run as its
+// own process with the test's `input` piped to stdin, and its stdout is
+// compared (trimmed) against the test's `expectedOutput`. This is the
+// classic competitive-programming judging model (Codeforces/HackerRank
+// style), not "call a specific function and inspect its return value".
+//
+// Safety model: this process does NOT try to sandbox the submitted code --
+// untrusted C# can spin forever in a way no in-process cancellation token
+// can safely interrupt. Every subprocess this host spawns (the build, and
+// each test run) has its own timeout enforced by killing that subprocess.
+// The Node parent additionally kills this whole host process if it doesn't
+// respond in time at all (see server/csharpJudge.js), as a last resort.
 //
 // This process is meant to run on a machine you trust to execute the code
 // you write for yourself -- it is not hardened against a malicious author,
 // only against accidents (infinite loops, bad output).
 
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.CodeAnalysis.CSharp.Scripting;
-using Microsoft.CodeAnalysis.Scripting;
 
 namespace JudgeHost
 {
-    public class JudgeRequest
+    public class TestCase
     {
-        public string Preamble { get; set; }
-        public string Code { get; set; }
-        public string Driver { get; set; }
-        public string TestsJson { get; set; }
+        public string Input { get; set; } = "";
+        public string ExpectedOutput { get; set; } = "";
     }
 
-    // Exposed to the script as bare globals -- "Tests" is directly usable
-    // inside preamble/driver code without any prefix.
-    public class ScriptGlobals
+    public class JudgeRequest
     {
-        public JsonElement Tests { get; set; }
+        public string Code { get; set; }
+        public List<TestCase> Tests { get; set; } = new List<TestCase>();
+    }
+
+    public class TestResult
+    {
+        public bool Pass { get; set; }
+        public string Output { get; set; }
+        public string Expected { get; set; }
+        public string Error { get; set; }
     }
 
     public static class Program
     {
-        // Shared helpers available to every problem's preamble/driver, so
-        // individual problems don't have to redeclare this boilerplate.
-        private const string SharedPrelude = @"
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.Json;
-using System.Reflection;
+        // Where the pre-restored submission project template lives (baked
+        // into the Docker image at build time, with network access -- the
+        // running container has none, so nothing here may touch the
+        // network at request time). Override with JUDGE_TEMPLATE_DIR.
+        private static readonly string TemplateDir =
+            Environment.GetEnvironmentVariable("JUDGE_TEMPLATE_DIR") ?? "/opt/judge-template";
 
-public class TestOutcome
-{
-    public bool Pass { get; set; }
-    public object Output { get; set; }
-    public object Expected { get; set; }
-    public string Error { get; set; }
-}
+        private const int BuildTimeoutMs = 15000;
+        private const int RunTimeoutMs = 5000;
+        private const int MaxOutputChars = 4000;
 
-public static class JudgeHelpers
-{
-    public static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
-    {
-        PropertyNameCaseInsensitive = true
-    };
-
-    public static bool DeepEqualJson(object a, object b)
-    {
-        return JsonSerializer.Serialize(a) == JsonSerializer.Serialize(b);
-    }
-
-    public static T Arg<T>(JsonElement test, int index)
-    {
-        return JsonSerializer.Deserialize<T>(test.GetProperty(""args"")[index].GetRawText(), JsonOptions);
-    }
-
-    public static T Expected<T>(JsonElement test)
-    {
-        return JsonSerializer.Deserialize<T>(test.GetProperty(""expected"").GetRawText(), JsonOptions);
-    }
-
-    // Generic driver for 'design' problems: a class exercised by a sequence
-    // of operation names + per-call arguments, e.g. [""MinStack"",""push"",...].
-    // Test shape: { args: [ops, opArgs], expected: [...] }
-    public static List<object> RunDesignOps<TClass>(JsonElement test) where TClass : class
-    {
-        var ops = JsonSerializer.Deserialize<string[]>(test.GetProperty(""args"")[0].GetRawText(), JsonOptions);
-        var opArgsRaw = test.GetProperty(""args"")[1];
-        var results = new List<object>();
-        TClass instance = null;
-        var ctor = typeof(TClass).GetConstructors()[0];
-
-        for (int i = 0; i < ops.Length; i++)
+        private static readonly JsonSerializerOptions OutputOptions = new JsonSerializerOptions
         {
-            var argsElement = opArgsRaw[i];
-            if (i == 0)
-            {
-                var ctorParams = ctor.GetParameters();
-                var ctorArgs = new object[ctorParams.Length];
-                for (int p = 0; p < ctorParams.Length; p++)
-                {
-                    ctorArgs[p] = JsonSerializer.Deserialize(argsElement[p].GetRawText(), ctorParams[p].ParameterType, JsonOptions);
-                }
-                instance = (TClass)ctor.Invoke(ctorArgs);
-                results.Add(null);
-                continue;
-            }
-
-            var method = typeof(TClass).GetMethod(ops[i]);
-            if (method == null) throw new Exception(""No method named '"" + ops[i] + ""' on "" + typeof(TClass).Name);
-            var pars = method.GetParameters();
-            var args = new object[pars.Length];
-            for (int p = 0; p < pars.Length; p++)
-            {
-                args[p] = JsonSerializer.Deserialize(argsElement[p].GetRawText(), pars[p].ParameterType, JsonOptions);
-            }
-            var res = method.Invoke(instance, args);
-            results.Add(res);
-        }
-
-        return results;
-    }
-}
-";
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        };
 
         public static async Task<int> Main(string[] args)
         {
             string input;
-            using (var reader = new System.IO.StreamReader(Console.OpenStandardInput(), Encoding.UTF8))
+            using (var reader = new StreamReader(Console.OpenStandardInput(), Encoding.UTF8))
             {
                 input = await reader.ReadToEndAsync();
             }
@@ -142,52 +94,194 @@ public static class JudgeHelpers
                 return 0;
             }
 
+            string submissionDir = Path.Combine(Path.GetTempPath(), "judge-" + Guid.NewGuid().ToString("N"));
             try
             {
-                var fullScript = string.Join("\n", new[]
+                Directory.CreateDirectory(submissionDir);
+                CopyTemplate(TemplateDir, submissionDir);
+                await File.WriteAllTextAsync(Path.Combine(submissionDir, "Program.cs"), request.Code ?? "");
+
+                string outDir = Path.Combine(submissionDir, "out");
+                var buildResult = await RunProcessAsync(
+                    "dotnet",
+                    $"build --no-restore -c Release -o \"{outDir}\" --nologo -v quiet",
+                    submissionDir,
+                    stdinInput: null,
+                    timeoutMs: BuildTimeoutMs);
+
+                if (buildResult.TimedOut)
                 {
-                    SharedPrelude,
-                    request.Preamble ?? "",
-                    request.Code ?? "",
-                    request.Driver ?? "",
-                });
+                    WriteResult(new { ok = false, error = "Compile timed out." });
+                    return 0;
+                }
+                if (buildResult.ExitCode != 0)
+                {
+                    string buildLog = (buildResult.Stdout + "\n" + buildResult.Stderr).Trim();
+                    WriteResult(new { ok = false, error = "Compile error:\n" + Truncate(buildLog, MaxOutputChars) });
+                    return 0;
+                }
 
-                var options = ScriptOptions.Default
-                    .WithReferences(
-                        typeof(object).Assembly,
-                        typeof(System.Linq.Enumerable).Assembly,
-                        typeof(System.Text.Json.JsonSerializer).Assembly,
-                        typeof(System.Collections.Generic.List<>).Assembly
-                    )
-                    .WithImports("System", "System.Collections.Generic", "System.Linq", "System.Text.Json", "System.Reflection");
+                string dllPath = Path.Combine(outDir, "Submission.dll");
+                if (!File.Exists(dllPath))
+                {
+                    WriteResult(new { ok = false, error = "Build succeeded but Submission.dll was not produced." });
+                    return 0;
+                }
 
-                var testsElement = string.IsNullOrWhiteSpace(request.TestsJson)
-                    ? JsonSerializer.Deserialize<JsonElement>("[]")
-                    : JsonSerializer.Deserialize<JsonElement>(request.TestsJson);
+                var results = new List<TestResult>();
+                foreach (var test in request.Tests ?? new List<TestCase>())
+                {
+                    var runResult = await RunProcessAsync("dotnet", $"\"{dllPath}\"", outDir, test.Input ?? "", RunTimeoutMs);
 
-                var globals = new ScriptGlobals { Tests = testsElement };
+                    if (runResult.TimedOut)
+                    {
+                        results.Add(new TestResult
+                        {
+                            Pass = false,
+                            Output = Truncate(Normalize(runResult.Stdout), MaxOutputChars),
+                            Expected = Normalize(test.ExpectedOutput),
+                            Error = "Time limit exceeded (possible infinite loop)",
+                        });
+                        continue;
+                    }
 
-                var scriptResult = await CSharpScript.EvaluateAsync<object>(fullScript, options, globals);
+                    string actual = Normalize(runResult.Stdout);
+                    string expected = Normalize(test.ExpectedOutput);
+                    bool pass = runResult.ExitCode == 0 && actual == expected;
+                    string error = null;
+                    if (runResult.ExitCode != 0)
+                    {
+                        error = Truncate(runResult.Stderr.Trim(), MaxOutputChars);
+                        if (string.IsNullOrEmpty(error)) error = $"Program exited with code {runResult.ExitCode}.";
+                    }
 
-                WriteResult(new { ok = true, results = scriptResult });
-            }
-            catch (CompilationErrorException cex)
-            {
-                var message = string.Join("\n", cex.Diagnostics);
-                WriteResult(new { ok = false, error = "Compile error:\n" + message });
+                    results.Add(new TestResult
+                    {
+                        Pass = pass,
+                        Output = Truncate(actual, MaxOutputChars),
+                        Expected = expected,
+                        Error = error,
+                    });
+                }
+
+                WriteResult(new { ok = true, results });
             }
             catch (Exception ex)
             {
                 WriteResult(new { ok = false, error = ex.Message });
             }
+            finally
+            {
+                try { Directory.Delete(submissionDir, recursive: true); } catch { /* best effort */ }
+            }
 
             return 0;
         }
 
-        private static readonly JsonSerializerOptions OutputOptions = new JsonSerializerOptions
+        // Copies just the pre-restored project file(s) needed to build with
+        // --no-restore: the .csproj and the obj/ directory NuGet populated
+        // during the image build (see Dockerfile). Never copies bin/ or any
+        // stray Program.cs from the template.
+        private static void CopyTemplate(string templateDir, string destDir)
         {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        };
+            foreach (var file in Directory.GetFiles(templateDir, "*.csproj"))
+            {
+                File.Copy(file, Path.Combine(destDir, Path.GetFileName(file)));
+            }
+            string objSrc = Path.Combine(templateDir, "obj");
+            if (Directory.Exists(objSrc))
+            {
+                CopyDirectory(objSrc, Path.Combine(destDir, "obj"));
+            }
+        }
+
+        private static void CopyDirectory(string sourceDir, string destDir)
+        {
+            Directory.CreateDirectory(destDir);
+            foreach (var file in Directory.GetFiles(sourceDir))
+            {
+                File.Copy(file, Path.Combine(destDir, Path.GetFileName(file)));
+            }
+            foreach (var dir in Directory.GetDirectories(sourceDir))
+            {
+                CopyDirectory(dir, Path.Combine(destDir, Path.GetFileName(dir)));
+            }
+        }
+
+        // \r\n -> \n, then trim leading/trailing whitespace -- keeps
+        // comparisons robust to trailing newlines/CR without silently
+        // ignoring meaningful whitespace inside the output.
+        private static string Normalize(string s)
+        {
+            if (s == null) return "";
+            return s.Replace("\r\n", "\n").Trim();
+        }
+
+        private static string Truncate(string s, int max)
+        {
+            if (s == null) return "";
+            return s.Length <= max ? s : s.Substring(0, max) + "\n... (truncated)";
+        }
+
+        private class ProcResult
+        {
+            public int ExitCode;
+            public string Stdout = "";
+            public string Stderr = "";
+            public bool TimedOut;
+        }
+
+        private static async Task<ProcResult> RunProcessAsync(string fileName, string arguments, string workingDir, string stdinInput, int timeoutMs)
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = fileName,
+                Arguments = arguments,
+                WorkingDirectory = workingDir,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+            };
+
+            using var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
+            var stdout = new StringBuilder();
+            var stderr = new StringBuilder();
+
+            process.OutputDataReceived += (_, e) => { if (e.Data != null) stdout.AppendLine(e.Data); };
+            process.ErrorDataReceived += (_, e) => { if (e.Data != null) stderr.AppendLine(e.Data); };
+
+            process.Start();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            if (stdinInput != null)
+            {
+                await process.StandardInput.WriteAsync(stdinInput);
+            }
+            process.StandardInput.Close();
+
+            using var cts = new CancellationTokenSource(timeoutMs);
+            bool timedOut = false;
+            try
+            {
+                await process.WaitForExitAsync(cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                timedOut = true;
+                try { process.Kill(entireProcessTree: true); } catch { /* already gone */ }
+                try { await process.WaitForExitAsync(); } catch { /* best effort */ }
+            }
+
+            return new ProcResult
+            {
+                ExitCode = timedOut ? -1 : process.ExitCode,
+                Stdout = stdout.ToString(),
+                Stderr = stderr.ToString(),
+                TimedOut = timedOut,
+            };
+        }
 
         private static void WriteResult(object result)
         {

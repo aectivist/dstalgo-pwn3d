@@ -76,30 +76,26 @@ router.get('/:slug', (req, res) => {
 });
 
 async function judgeSlug(slug, code) {
-  const p = db.prepare('SELECT id, difficulty, preamble, driver, tests_json FROM problems WHERE slug = ?').get(slug);
+  const p = db.prepare('SELECT id, difficulty, tests_json FROM problems WHERE slug = ?').get(slug);
   if (!p) return { error: 'not_found' };
 
-  const judgeResult = await runCSharp({
-    preamble: p.preamble,
-    code,
-    driver: p.driver,
-    testsJson: p.tests_json,
-  });
+  let tests = [];
+  try { tests = JSON.parse(p.tests_json) || []; } catch (e) { /* leave empty */ }
 
-  return { problem: p, judgeResult };
+  const judgeResult = await runCSharp({ code, tests });
+
+  return { problem: p, judgeResult, tests };
 }
 
-// Merges each test's original `args` back in (for display in the results
-// panel) -- the judge host itself only knows about Output/Expected/Pass.
-function summarize(judgeResult, testsJson) {
+// Merges each test's original `input` back in (for display in the results
+// panel) -- the judge host itself only knows about output/expected/pass.
+function summarize(judgeResult, tests) {
   if (!judgeResult.ok) {
     return { ok: false, error: judgeResult.error, passed: 0, total: 0, results: [] };
   }
-  let tests = [];
-  try { tests = JSON.parse(testsJson) || []; } catch (e) { /* leave empty */ }
   const results = (judgeResult.results || []).map((r, i) => ({
     ...r,
-    args: tests[i] ? tests[i].args : undefined,
+    input: tests[i] ? tests[i].input : undefined,
   }));
   const passed = results.filter(r => r.pass).length;
   return { ok: true, results, passed, total: results.length };
@@ -112,10 +108,10 @@ router.post('/:slug/run', async (req, res) => {
     return res.status(400).json({ error: 'Code is required' });
   }
 
-  const { problem, judgeResult, error } = await judgeSlug(req.params.slug, code);
+  const { problem, judgeResult, tests, error } = await judgeSlug(req.params.slug, code);
   if (error === 'not_found' || !problem) return res.status(404).json({ error: 'Problem not found' });
 
-  res.json(summarize(judgeResult, problem.tests_json));
+  res.json(summarize(judgeResult, tests));
 });
 
 const insertSubmission = db.prepare(`
@@ -136,10 +132,10 @@ router.post('/:slug/submit', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'Code is required' });
   }
 
-  const { problem, judgeResult, error } = await judgeSlug(req.params.slug, code);
+  const { problem, judgeResult, tests, error } = await judgeSlug(req.params.slug, code);
   if (error === 'not_found' || !problem) return res.status(404).json({ error: 'Problem not found' });
 
-  const summary = summarize(judgeResult, problem.tests_json);
+  const summary = summarize(judgeResult, tests);
   const status = summary.ok && summary.total > 0 && summary.passed === summary.total ? 'Accepted' : 'Failed';
 
   const xpBefore = db.prepare('SELECT xp FROM users WHERE id = ?').get(req.user.id).xp;

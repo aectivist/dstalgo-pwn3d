@@ -84,7 +84,7 @@ body { color: var(--text); font-family: var(--font); background: var(--bg); }
 .category-pill { color: var(--text-dim); background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; }
 .problem-description { color: var(--text); }
 .problem-description code { background: var(--panel-2); border: 1px solid var(--border); color: var(--text); border-radius: 4px; }
-#code-editor { background: #0d0d0d; color: #d4d4d4; border: 1px solid var(--border); border-radius: 6px; }
+.CodeMirror { background: #0d0d0d; color: #d4d4d4; border: 1px solid var(--border); border-radius: 6px; }
 .result-summary { color: var(--text); }
 .result-summary.pass { color: var(--accent-2); }
 .result-summary.fail { color: var(--danger); }

@@ -6,16 +6,21 @@ const { spawn } = require('child_process');
 const DEFAULT_DLL = path.join(__dirname, '..', 'judge-host', 'bin', 'Release', 'net9.0', 'JudgeHost.dll');
 const JUDGE_HOST_DLL = process.env.JUDGE_HOST_DLL || DEFAULT_DLL;
 
-// Generous vs. the old in-browser JS timeout: every run pays a fresh
-// process start + Roslyn compile cost, not just execution.
-const TIMEOUT_MS = 10000;
+// judge-host now runs a REAL `dotnet build` per submission plus one
+// process per test case (see judge-host/Program.cs), each with its own
+// internal timeout (15s build, 5s/test) -- this outer timeout is just a
+// last-resort circuit breaker in case judge-host itself hangs in a way
+// its own internal timeouts don't catch, so it's set comfortably above
+// the worst realistic case (build + several test runs).
+const TIMEOUT_MS = 45000;
 
-// Runs one problem's (preamble + user code + driver) against its tests by
-// spawning a fresh JudgeHost process per call. The timeout is enforced HERE,
-// by killing the child process -- that's the only reliable way to stop
-// arbitrary C# that might be stuck in an infinite loop; nothing inside the
-// child process can safely interrupt itself.
-function runCSharp({ preamble, code, driver, testsJson }) {
+// Runs one problem's full submission (a complete, standalone C# program --
+// no hidden driver) against its stdin/stdout test cases by spawning a
+// fresh JudgeHost process per call. The timeout is enforced HERE, by
+// killing the child process, as a final backstop -- that's the only
+// reliable way to stop something stuck in an infinite loop; nothing inside
+// the child process can safely interrupt itself if its own timeouts fail.
+function runCSharp({ code, tests }) {
   return new Promise((resolve) => {
     let child;
     try {
@@ -33,7 +38,7 @@ function runCSharp({ preamble, code, driver, testsJson }) {
       if (settled) return;
       settled = true;
       child.kill('SIGKILL');
-      resolve({ ok: false, error: 'Time limit exceeded (possible infinite loop)' });
+      resolve({ ok: false, error: 'Judge process timed out unexpectedly.' });
     }, TIMEOUT_MS);
 
     child.stdout.on('data', (chunk) => { stdout += chunk; });
@@ -61,7 +66,7 @@ function runCSharp({ preamble, code, driver, testsJson }) {
       }
     });
 
-    child.stdin.write(JSON.stringify({ preamble, code, driver, testsJson }));
+    child.stdin.write(JSON.stringify({ code, tests }));
     child.stdin.end();
   });
 }

@@ -151,19 +151,56 @@ body { margin: 0; min-height: 100vh; }
 .problem-description { line-height: 1.6; }
 .problem-description code { padding: 1px 5px; font-size: 0.9em; }
 .editor-toolbar { display: flex; gap: 8px; margin-bottom: 10px; }
-#code-editor {
+/* The textarea (#code-editor) is replaced at runtime by CodeMirror
+   (CodeMirror.fromTextArea -- see main.js), which hides the original
+   textarea and inserts a sibling .CodeMirror element, so sizing/font
+   rules now target that instead. Colors/background/border stay
+   per-theme (each theme file defines its own .CodeMirror rule, same as
+   #code-editor did before) -- but since every theme's code panel is a
+   dark terminal-style panel regardless of the overall site theme, one
+   shared syntax-highlighting palette below covers all of them. */
+.CodeMirror {
   width: 100%;
   min-height: 340px;
+  height: auto;
   font-family: "Cascadia Code", Consolas, Menlo, monospace;
   font-size: 0.9rem;
-  padding: 14px;
-  resize: vertical;
-  tab-size: 2;
+  padding: 14px 0;
 }
+.CodeMirror-lines { padding: 0 14px; }
+.CodeMirror pre.CodeMirror-line, .CodeMirror pre.CodeMirror-line-like { padding: 0; }
+
+.cm-s-dstalgo.CodeMirror { color: inherit; }
+.cm-s-dstalgo .CodeMirror-gutters { background: transparent; border-right: none; }
+.cm-s-dstalgo .CodeMirror-linenumber { color: rgba(255, 255, 255, 0.28); }
+.cm-s-dstalgo .CodeMirror-cursor { border-left: 1.5px solid rgba(255, 255, 255, 0.85); }
+.cm-s-dstalgo .CodeMirror-selected { background: rgba(120, 170, 255, 0.25); }
+.cm-s-dstalgo .cm-keyword { color: #569cd6; }
+.cm-s-dstalgo .cm-atom { color: #4fc1ff; }
+.cm-s-dstalgo .cm-number { color: #b5cea8; }
+.cm-s-dstalgo .cm-def { color: #dcdcaa; }
+.cm-s-dstalgo .cm-variable { color: inherit; }
+.cm-s-dstalgo .cm-variable-2 { color: #9cdcfe; }
+.cm-s-dstalgo .cm-property { color: #9cdcfe; }
+.cm-s-dstalgo .cm-operator { color: #d4d4d4; }
+.cm-s-dstalgo .cm-string { color: #ce9178; }
+.cm-s-dstalgo .cm-comment { color: #6a9955; font-style: italic; }
+.cm-s-dstalgo .cm-meta { color: #4ec9b0; }
+.cm-s-dstalgo .cm-builtin { color: #4ec9b0; }
+.cm-s-dstalgo .cm-bracket { color: #d4d4d4; }
 .results { margin-top: 14px; }
 .result-summary { font-weight: 700; margin-bottom: 8px; }
 .test-case { padding: 8px 12px; margin-bottom: 6px; font-size: 0.85rem; font-family: Consolas, Menlo, monospace; }
 .test-case .label { font-weight: 700; margin-right: 6px; }
+.test-case .test-io {
+  margin: 6px 0 0;
+  padding: 6px 8px;
+  font-size: 0.85em;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-radius: 4px;
+  background: rgba(127, 127, 127, 0.08);
+}
 
 @media (max-width: 900px) {
   .solve-page { grid-template-columns: 1fr; }

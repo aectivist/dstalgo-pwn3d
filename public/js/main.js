@@ -216,8 +216,9 @@ function renderResults(data) {
     ${results.map((r, i) => `
       <div class="test-case ${r.pass ? 'pass' : 'fail'}">
         <span class="label">${r.pass ? 'PASS' : 'FAIL'}</span>
-        Test ${i + 1}${r.args !== undefined ? `: input = ${escapeHtml(JSON.stringify(r.args))}` : ''}
-        ${r.pass ? '' : `<br/>expected: ${escapeHtml(JSON.stringify(r.expected))}, got: ${escapeHtml(r.error ? 'error: ' + r.error : JSON.stringify(r.output))}`}
+        Test ${i + 1}
+        ${r.input ? `<pre class="test-io">input:\n${escapeHtml(r.input)}</pre>` : ''}
+        ${r.pass ? '' : `<pre class="test-io">expected output:\n${escapeHtml(r.expected)}\n\n${r.error ? 'error:\n' + escapeHtml(r.error) : 'got:\n' + escapeHtml(r.output)}</pre>`}
       </div>
     `).join('')}
   `;
@@ -249,23 +250,30 @@ async function viewSolve(slug) {
   // "cs:" namespace so drafts saved back when problems were JS-judged don't
   // resurface as invalid C# after the language switch.
   const storageKey = `dstalgo-code:cs:${slug}`;
-  const editor = document.getElementById('code-editor');
+  const textareaEl = document.getElementById('code-editor');
   const saved = localStorage.getItem(storageKey);
-  editor.value = saved || (data.lastSubmission ? data.lastSubmission.code : problem.starterCode);
+  textareaEl.value = saved || (data.lastSubmission ? data.lastSubmission.code : problem.starterCode);
 
-  editor.addEventListener('input', () => localStorage.setItem(storageKey, editor.value));
-  editor.addEventListener('keydown', (e) => {
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      const start = editor.selectionStart, end = editor.selectionEnd;
-      editor.value = editor.value.slice(0, start) + '  ' + editor.value.slice(end);
-      editor.selectionStart = editor.selectionEnd = start + 2;
-    }
+  // CodeMirror.fromTextArea hides the original textarea and inserts a
+  // sibling .CodeMirror element -- interact through the editor object
+  // from here on, not the textarea directly (see public/css/base.css for
+  // why the syntax-highlighting palette is shared across all 4 themes).
+  const editor = CodeMirror.fromTextArea(textareaEl, {
+    mode: 'text/x-csharp',
+    theme: 'dstalgo',
+    lineNumbers: true,
+    indentUnit: 4,
+    tabSize: 4,
+    indentWithTabs: false,
+    viewportMargin: Infinity,
+    extraKeys: { Tab: (cm) => cm.replaceSelection('    ', 'end') },
   });
+
+  editor.on('change', () => localStorage.setItem(storageKey, editor.getValue()));
 
   document.getElementById('btn-reset').addEventListener('click', () => {
     if (confirm('Reset to starter code? This discards your current changes.')) {
-      editor.value = problem.starterCode;
+      editor.setValue(problem.starterCode);
       localStorage.removeItem(storageKey);
       document.getElementById('results').innerHTML = '';
     }
@@ -275,7 +283,7 @@ async function viewSolve(slug) {
     e.target.disabled = true;
     document.getElementById('results').innerHTML = '<p>Compiling and running C#...</p>';
     try {
-      const result = await api.run(slug, editor.value);
+      const result = await api.run(slug, editor.getValue());
       renderResults(result);
     } catch (err) {
       document.getElementById('results').innerHTML = `<div class="result-summary fail">Error: ${escapeHtml(err.message)}</div>`;
@@ -289,7 +297,7 @@ async function viewSolve(slug) {
     e.target.disabled = true;
     document.getElementById('results').innerHTML = '<p>Compiling and running C#...</p>';
     try {
-      const submission = await api.submit(slug, editor.value);
+      const submission = await api.submit(slug, editor.getValue());
       const summary = renderResults(submission);
       if (summary) {
         if (submission.xpAwarded > 0) {

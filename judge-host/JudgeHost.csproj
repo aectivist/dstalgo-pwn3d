@@ -9,10 +9,9 @@
     <AssemblyName>JudgeHost</AssemblyName>
   </PropertyGroup>
 
-  <ItemGroup>
-    <!-- Floating to the latest 4.x patch so restore doesn't fail on a
-         guessed exact version; run `dotnet restore` on first build. -->
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="4.*" />
-  </ItemGroup>
+  <!-- No package references needed: this now orchestrates a real
+       `dotnet build` of each submission as a subprocess (see Program.cs)
+       instead of using Roslyn scripting in-process, so it only needs the
+       base class library. -->
 
 </Project>

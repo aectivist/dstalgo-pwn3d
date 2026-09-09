@@ -56,7 +56,7 @@ const seed = db.transaction(() => {
       description_html: p.description_html,
       function_name: p.function_name || '',
       preamble: p.preamble || '',
-      driver: p.driver,
+      driver: p.driver || '',
       starter_code: p.starter_code,
       tests_json: JSON.stringify(p.tests),
       order_index: orderCounters[p.category],

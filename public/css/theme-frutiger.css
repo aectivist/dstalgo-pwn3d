@@ -209,7 +209,7 @@ body::after {
 .category-pill { color: var(--ink-dim); background: rgba(255,255,255,0.55); border: 1px solid rgba(255,255,255,0.7); border-radius: 999px; }
 .problem-description { color: var(--text); }
 .problem-description code { background: rgba(255,255,255,0.8); border: 1px solid rgba(255,255,255,0.9); color: var(--ink); border-radius: 4px; }
-#code-editor {
+.CodeMirror {
   background: linear-gradient(180deg, #041824 0%, #082c40 100%);
   color: #bdeeff;
   border: 1px solid rgba(255,255,255,0.2);

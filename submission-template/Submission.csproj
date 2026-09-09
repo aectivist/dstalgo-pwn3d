@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Template project for student submissions. judge-host copies this
+       .csproj plus its pre-restored obj/ (populated once at Docker image
+       build time; see Dockerfile) into a fresh temp directory per
+       submission, drops in the student's own Program.cs, and builds it
+       without restoring, so no network access is ever needed at request
+       time (the running container has none; see DEPLOYMENT.md's Docker
+       section). -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <AssemblyName>Submission</AssemblyName>
+  </PropertyGroup>
+
+</Project>
