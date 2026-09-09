@@ -184,9 +184,14 @@ public static class JudgeHelpers
             return 0;
         }
 
+        private static readonly JsonSerializerOptions OutputOptions = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        };
+
         private static void WriteResult(object result)
         {
-            Console.WriteLine(JsonSerializer.Serialize(result));
+            Console.WriteLine(JsonSerializer.Serialize(result, OutputOptions));
         }
     }
 }
