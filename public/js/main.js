@@ -203,12 +203,80 @@ async function viewNotes() {
 // arbitrary C# can't be sandboxed in the browser the way the old JS Web
 // Worker judge could be, so Run/Submit just POST the code and wait.
 
-function renderResults(data) {
+// Real `dotnet build` output looks like:
+//   /tmp/judge-xxx/Program.cs(4,13): error CS0246: ... [/tmp/judge-xxx/Submission.csproj]
+// Pull out {line, col, severity, code, message} per diagnostic so they can
+// be shown at the exact line in the editor, like a real compiler/IDE does,
+// instead of just as a wall of raw text underneath.
+function parseCompileErrors(errorText) {
+  const results = [];
+  const seen = new Set();
+  const lineRegex = /Program\.cs\((\d+),(\d+)\):\s*(error|warning)\s+(\S+):\s*(.*)$/gm;
+  let m;
+  while ((m = lineRegex.exec(errorText))) {
+    const [, line, col, severity, code, rawMessage] = m;
+    const message = rawMessage.replace(/\s*\[[^[\]]*\]\s*$/, '').trim();
+    // MSBuild logs each diagnostic to both stdout and stderr, and
+    // judge-host concatenates both -- dedupe identical entries.
+    const key = `${line}:${col}:${code}:${message}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    results.push({ line: parseInt(line, 10), col: parseInt(col, 10), severity, code, message });
+  }
+  return results;
+}
+
+function clearCompileMarkers(editor) {
+  (editor.dstalgoErrorLines || []).forEach((line) => {
+    if (line < editor.lineCount()) editor.removeLineClass(line, 'background', 'cm-error-line');
+  });
+  editor.clearGutter('cm-error-gutter');
+  editor.dstalgoErrorLines = [];
+}
+
+function markCompileErrors(editor, errors) {
+  clearCompileMarkers(editor);
+  const markedLines = new Set();
+  errors.forEach((err) => {
+    const lineIdx = Math.max(0, err.line - 1);
+    if (lineIdx >= editor.lineCount()) return;
+    editor.addLineClass(lineIdx, 'background', 'cm-error-line');
+    editor.dstalgoErrorLines.push(lineIdx);
+    if (!markedLines.has(lineIdx)) {
+      markedLines.add(lineIdx);
+      const marker = document.createElement('div');
+      marker.className = 'cm-error-marker';
+      marker.title = `${err.code}: ${err.message}`;
+      marker.textContent = '●';
+      editor.setGutterMarker(lineIdx, 'cm-error-gutter', marker);
+    }
+  });
+}
+
+function renderResults(data, editor) {
   const resultsEl = document.getElementById('results');
   if (!data.ok) {
-    resultsEl.innerHTML = `<div class="result-summary fail">Error: ${escapeHtml(data.error)}</div>`;
+    const errors = parseCompileErrors(data.error || '');
+    if (editor) {
+      if (errors.length) markCompileErrors(editor, errors);
+      else clearCompileMarkers(editor);
+    }
+    if (errors.length) {
+      resultsEl.innerHTML = `
+        <div class="result-summary fail">Compile error -- ${errors.length} issue${errors.length === 1 ? '' : 's'} found (see highlighted line${errors.length === 1 ? '' : 's'} in the editor)</div>
+        ${errors.map((err) => `
+          <div class="test-case ${err.severity === 'error' ? 'fail' : ''}">
+            <span class="label">${err.severity.toUpperCase()}</span>
+            Line ${err.line}, Col ${err.col} -- <b>${escapeHtml(err.code)}</b>: ${escapeHtml(err.message)}
+          </div>
+        `).join('')}
+      `;
+    } else {
+      resultsEl.innerHTML = `<div class="result-summary fail">Error: ${escapeHtml(data.error)}</div>`;
+    }
     return null;
   }
+  if (editor) clearCompileMarkers(editor);
   const { passed, total, results } = data;
   const allPass = total > 0 && passed === total;
   resultsEl.innerHTML = `
@@ -262,19 +330,25 @@ async function viewSolve(slug) {
     mode: 'text/x-csharp',
     theme: 'dstalgo',
     lineNumbers: true,
+    gutters: ['cm-error-gutter', 'CodeMirror-linenumbers'],
     indentUnit: 4,
     tabSize: 4,
     indentWithTabs: false,
     viewportMargin: Infinity,
     extraKeys: { Tab: (cm) => cm.replaceSelection('    ', 'end') },
   });
+  editor.dstalgoErrorLines = [];
 
-  editor.on('change', () => localStorage.setItem(storageKey, editor.getValue()));
+  editor.on('change', () => {
+    localStorage.setItem(storageKey, editor.getValue());
+    clearCompileMarkers(editor);
+  });
 
   document.getElementById('btn-reset').addEventListener('click', () => {
     if (confirm('Reset to starter code? This discards your current changes.')) {
       editor.setValue(problem.starterCode);
       localStorage.removeItem(storageKey);
+      clearCompileMarkers(editor);
       document.getElementById('results').innerHTML = '';
     }
   });
@@ -284,7 +358,7 @@ async function viewSolve(slug) {
     document.getElementById('results').innerHTML = '<p>Compiling and running C#...</p>';
     try {
       const result = await api.run(slug, editor.getValue());
-      renderResults(result);
+      renderResults(result, editor);
     } catch (err) {
       document.getElementById('results').innerHTML = `<div class="result-summary fail">Error: ${escapeHtml(err.message)}</div>`;
     }
@@ -298,7 +372,7 @@ async function viewSolve(slug) {
     document.getElementById('results').innerHTML = '<p>Compiling and running C#...</p>';
     try {
       const submission = await api.submit(slug, editor.getValue());
-      const summary = renderResults(submission);
+      const summary = renderResults(submission, editor);
       if (summary) {
         if (submission.xpAwarded > 0) {
           const me = await api.me();

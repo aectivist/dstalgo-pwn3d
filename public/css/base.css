@@ -188,6 +188,13 @@ body { margin: 0; min-height: 100vh; }
 .cm-s-dstalgo .cm-meta { color: #4ec9b0; }
 .cm-s-dstalgo .cm-builtin { color: #4ec9b0; }
 .cm-s-dstalgo .cm-bracket { color: #d4d4d4; }
+
+/* Compile error markers -- see parseCompileErrors/markCompileErrors in
+   main.js. Fixed colors (not theme vars) to match the code panel's own
+   always-dark palette above. */
+.cm-error-gutter { width: 14px; }
+.cm-error-marker { color: #f14c4c; font-size: 0.9rem; text-align: center; cursor: help; }
+.cm-error-line { background: rgba(241, 76, 76, 0.18) !important; }
 .results { margin-top: 14px; }
 .result-summary { font-weight: 700; margin-bottom: 8px; }
 .test-case { padding: 8px 12px; margin-bottom: 6px; font-size: 0.85rem; font-family: Consolas, Menlo, monospace; }
