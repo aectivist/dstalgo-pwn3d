@@ -94,4 +94,18 @@ if (!userColumns.includes('xp')) {
   backfill();
 }
 
+// One-time cleanup: submissions recorded before the judge rewrite (full
+// compiled programs judged by stdin/stdout, instead of a bare function
+// called by a hidden driver) store code in the old, now-incompatible
+// format. Blank it out once so revisiting a problem doesn't silently
+// repopulate the editor with code that can no longer compile -- XP,
+// solved status, and pass/total counts are untouched, only the stored
+// code text is cleared. Guarded by a marker file (in the same persistent
+// volume as the DB) so this runs exactly once, not on every restart.
+const codeResetMarker = path.join(dataDir, '.code-format-reset-2026-09-10');
+if (!fs.existsSync(codeResetMarker)) {
+  db.exec(`UPDATE submissions SET code = '' WHERE code != ''`);
+  fs.writeFileSync(codeResetMarker, new Date().toISOString());
+}
+
 module.exports = db;

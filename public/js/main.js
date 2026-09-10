@@ -315,12 +315,16 @@ async function viewSolve(slug) {
   document.getElementById('problem-category').textContent = problem.categoryName;
   document.getElementById('problem-description').innerHTML = problem.descriptionHtml;
 
-  // "cs:" namespace so drafts saved back when problems were JS-judged don't
-  // resurface as invalid C# after the language switch.
-  const storageKey = `dstalgo-code:cs:${slug}`;
+  // "cs2:" namespace (bumped from "cs:") so drafts saved back before the
+  // judge rewrite (bare function called by a hidden driver, instead of a
+  // full compiled program) don't resurface as code that can no longer
+  // compile. lastSubmission.code is similarly blanked server-side for
+  // pre-rewrite submissions (see db.js) -- an empty string there also
+  // falls through to the starter code rather than an empty editor.
+  const storageKey = `dstalgo-code:cs2:${slug}`;
   const textareaEl = document.getElementById('code-editor');
   const saved = localStorage.getItem(storageKey);
-  textareaEl.value = saved || (data.lastSubmission ? data.lastSubmission.code : problem.starterCode);
+  textareaEl.value = saved || (data.lastSubmission && data.lastSubmission.code) || problem.starterCode;
 
   // CodeMirror.fromTextArea hides the original textarea and inserts a
   // sibling .CodeMirror element -- interact through the editor object
